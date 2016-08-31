@@ -8,6 +8,11 @@ Vagrant.require_version ">= 1.6.0"
 CLOUD_CONFIG_PATH = File.join(File.dirname(__FILE__), "user-data")
 CONFIG = File.join(File.dirname(__FILE__), "config.rb")
 
+DOCKER_PATH = File.join(Dir.home, ".docker")
+KEYS_CA_PATH = File.join(DOCKER_PATH, "ca.pem")
+KEYS_KEY_PATH = File.join(DOCKER_PATH, "server-key.pem")
+KEYS_CERT_PATH = File.join(DOCKER_PATH, "server-cert.pem")
+
 # Defaults for config options defined in CONFIG
 $num_instances = 1
 $instance_name_prefix = "core"
@@ -142,6 +147,25 @@ Vagrant.configure("2") do |config|
         config.vm.provision :shell, :inline => "mv /tmp/vagrantfile-user-data /var/lib/coreos-vagrant/", :privileged => true
       end
 
+      config.vm.provision :shell, :inline => "mkdir /etc/docker/", :privileged => true
+      if File.exist?(KEYS_CA_PATH)
+        config.vm.provision :file, :source => "#{KEYS_CA_PATH}", :destination => "/tmp/ca.pem"
+        config.vm.provision :shell, :inline => "mv /tmp/ca.pem /etc/docker/", :privileged => true
+	  else
+		puts "Could not find ca.pem with location: " + KEYS_CA_PATH
+      end
+      if File.exist?(KEYS_KEY_PATH)
+        config.vm.provision :file, :source => "#{KEYS_KEY_PATH}", :destination => "/tmp/server-key.pem"
+        config.vm.provision :shell, :inline => "mv /tmp/server-key.pem /etc/docker/", :privileged => true
+	  else
+		puts "Could not find server-key.pem with location: " + KEYS_KEY_PATH
+      end
+      if File.exist?(KEYS_CERT_PATH)
+        config.vm.provision :file, :source => "#{KEYS_CERT_PATH}", :destination => "/tmp/server-cert.pem"
+        config.vm.provision :shell, :inline => "mv /tmp/server-cert.pem /etc/docker/", :privileged => true
+	  else
+		puts "Could not find server-cert.pem with location: " + KEYS_CERT_PATH
+      end
     end
   end
 end

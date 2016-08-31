@@ -41,3 +41,23 @@ coreos:
 
         [Install]
         WantedBy=sockets.target
+    - name: docker-tcp-tls.socket
+        command: start
+        enable: true
+        content: |
+            [Unit]
+            Description=Docker Secured Socket for the API
+
+            [Socket]
+            ListenStream=2376
+            Service=docker.service
+            BindIPv6Only=both
+
+            [Install]
+            WantedBy=sockets.target
+    - name: docker.service
+        drop-ins:
+        - name: 10-docker-swarm.conf
+            content: |
+                [Service]
+                Environment="DOCKER_OPTS=--tlsverify --tlscacert=/etc/docker/ca.pem --tlscert=/etc/docker/server-cert.pem --tlskey=/etc/docker/server-key.pem"
