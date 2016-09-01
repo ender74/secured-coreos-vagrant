@@ -188,15 +188,6 @@ Vagrant.configure("2") do |config|
 	  else
 		puts "Could not find cert.pem with location: " + KEYS_CLIENT_CERT_PATH
       end
-	  
-	  config.vm.provision "shell" do |s|
-        if (i == 1)
-          s.inline = "docker swarm init --advertise-addr 172.17.8.101:2377"
-        else
-          s.inline = "docker swarm join --token $1 172.17.8.101:2377"
-		  s.args = ["$(curl -s https://172.17.8.101:2376/v1.24/swarm --insecure --cert /etc/docker/server-cert.pem --key /etc/docker/server-key.pem --cacert /etc/docker/ca.pem | jq -r '.JoinTokens.Worker')"]
-        end  
-	  end
     end
   end
 end
