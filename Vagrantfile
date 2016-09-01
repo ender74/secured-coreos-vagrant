@@ -10,8 +10,10 @@ CONFIG = File.join(File.dirname(__FILE__), "config.rb")
 
 DOCKER_PATH = File.join(Dir.home, ".docker")
 KEYS_CA_PATH = File.join(DOCKER_PATH, "ca.pem")
-KEYS_KEY_PATH = File.join(DOCKER_PATH, "server-key.pem")
-KEYS_CERT_PATH = File.join(DOCKER_PATH, "server-cert.pem")
+KEYS_SERVER_KEY_PATH = File.join(DOCKER_PATH, "server-key.pem")
+KEYS_SERVER_CERT_PATH = File.join(DOCKER_PATH, "server-cert.pem")
+KEYS_CLIENT_KEY_PATH = File.join(DOCKER_PATH, "key.pem")
+KEYS_CLIENT_CERT_PATH = File.join(DOCKER_PATH, "cert.pem")
 
 # Defaults for config options defined in CONFIG
 $num_instances = 1
@@ -154,18 +156,47 @@ Vagrant.configure("2") do |config|
 	  else
 		puts "Could not find ca.pem with location: " + KEYS_CA_PATH
       end
-      if File.exist?(KEYS_KEY_PATH)
-        config.vm.provision :file, :source => "#{KEYS_KEY_PATH}", :destination => "/tmp/server-key.pem"
+      if File.exist?(KEYS_SERVER_KEY_PATH)
+        config.vm.provision :file, :source => "#{KEYS_SERVER_KEY_PATH}", :destination => "/tmp/server-key.pem"
         config.vm.provision :shell, :inline => "mv /tmp/server-key.pem /etc/docker/", :privileged => true
 	  else
-		puts "Could not find server-key.pem with location: " + KEYS_KEY_PATH
+		puts "Could not find server-key.pem with location: " + KEYS_SERVER_KEY_PATH
       end
-      if File.exist?(KEYS_CERT_PATH)
-        config.vm.provision :file, :source => "#{KEYS_CERT_PATH}", :destination => "/tmp/server-cert.pem"
+      if File.exist?(KEYS_SERVER_CERT_PATH)
+        config.vm.provision :file, :source => "#{KEYS_SERVER_CERT_PATH}", :destination => "/tmp/server-cert.pem"
         config.vm.provision :shell, :inline => "mv /tmp/server-cert.pem /etc/docker/", :privileged => true
 	  else
-		puts "Could not find server-cert.pem with location: " + KEYS_CERT_PATH
+		puts "Could not find server-cert.pem with location: " + KEYS_SERVER_CERT_PATH
       end
+
+      config.vm.provision :shell, :inline => "mkdir /home/core/.docker/", :privileged => true
+      if File.exist?(KEYS_CA_PATH)
+        config.vm.provision :file, :source => "#{KEYS_CA_PATH}", :destination => "/tmp/client-ca.pem"
+        config.vm.provision :shell, :inline => "mv /tmp/client-ca.pem /home/core/.docker/ca.pem", :privileged => true
+	  else
+		puts "Could not find ca.pem with location: " + KEYS_CA_PATH
+      end
+      if File.exist?(KEYS_CLIENT_KEY_PATH)
+        config.vm.provision :file, :source => "#{KEYS_CLIENT_KEY_PATH}", :destination => "/tmp/client-key.pem"
+        config.vm.provision :shell, :inline => "mv /tmp/client-key.pem /home/core/.docker/key.pem", :privileged => true
+	  else
+		puts "Could not find key.pem with location: " + KEYS_CLIENT_KEY_PATH
+      end
+      if File.exist?(KEYS_CLIENT_CERT_PATH)
+        config.vm.provision :file, :source => "#{KEYS_CLIENT_CERT_PATH}", :destination => "/tmp/client-cert.pem"
+        config.vm.provision :shell, :inline => "mv /tmp/client-cert.pem /home/core/.docker/cert.pem", :privileged => true
+	  else
+		puts "Could not find cert.pem with location: " + KEYS_CLIENT_CERT_PATH
+      end
+	  
+	  config.vm.provision "shell" do |s|
+        if (i == 1)
+          s.inline = "docker swarm init --advertise-addr 172.17.8.101:2377"
+        else
+          s.inline = "docker swarm join --token $1 172.17.8.101:2377"
+		  s.args = ["$(curl -s https://172.17.8.101:2376/v1.24/swarm --insecure --cert /etc/docker/server-cert.pem --key /etc/docker/server-key.pem --cacert /etc/docker/ca.pem | jq -r '.JoinTokens.Worker')"]
+        end  
+	  end
     end
   end
 end
